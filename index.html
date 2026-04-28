@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vietnam Rooftop Solar PV Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header>
+  <div class="container">
+    <div class="header-row">
+      <div>
+        <h1>Vietnam Rooftop Solar PV Dashboard</h1>
+        <p>Monitoring data from EVN — Dec 2019 to Dec 2020</p>
+      </div>
+      <div class="header-controls">
+        <label for="monthSelect">Month:</label>
+        <select id="monthSelect"></select>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+  <!-- KPI Cards -->
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">Total RTS Systems</div>
+      <div class="kpi-value" id="kpiSystems">—</div>
+      <div class="kpi-change" id="kpiSystemsChange"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Total Capacity</div>
+      <div class="kpi-value" id="kpiCapacity">—</div>
+      <div class="kpi-change" id="kpiCapacityChange"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Monthly Generation</div>
+      <div class="kpi-value" id="kpiMonthly">—</div>
+      <div class="kpi-change" id="kpiMonthlyChange"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Cumulative Generation</div>
+      <div class="kpi-value" id="kpiCumulative">—</div>
+      <div class="kpi-change" id="kpiCumulativeChange"></div>
+    </div>
+  </section>
+
+  <!-- Charts Row 1: Cumulative Capacity & Monthly Systems -->
+  <section class="chart-grid">
+    <div class="chart-card">
+      <h3>Total Installed Capacity</h3>
+      <p class="chart-subtitle">Cumulative capacity (MWp) — Dec 2019 to Dec 2020</p>
+      <canvas id="chartCapacity"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>New Systems Per Month</h3>
+      <p class="chart-subtitle">Number of new RTS installations each month</p>
+      <canvas id="chartNewSystems"></canvas>
+    </div>
+  </section>
+
+  <!-- Charts Row 2: Monthly Capacity & Generation -->
+  <section class="chart-grid">
+    <div class="chart-card">
+      <h3>New Capacity Per Month</h3>
+      <p class="chart-subtitle">Newly installed capacity (MWp) each month</p>
+      <canvas id="chartNewCapacity"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>Monthly Generation</h3>
+      <p class="chart-subtitle">Electricity supplied to grid (MWh) each month</p>
+      <canvas id="chartGeneration"></canvas>
+    </div>
+  </section>
+
+  <!-- Stacked Bar: Customer Type -->
+  <section class="chart-grid">
+    <div class="chart-card full-width">
+      <h3>Breakdown by Customer Type</h3>
+      <p class="chart-subtitle">Distribution across Industrial, Commercial, Administrative, and Household sectors</p>
+      <div class="chart-controls">
+        <button class="active" data-metric="quantity" onclick="switchCustomerMetric('quantity', this)">Systems Count</button>
+        <button data-metric="capacity" onclick="switchCustomerMetric('capacity', this)">Capacity (kWp)</button>
+      </div>
+      <canvas id="chartCustomerType"></canvas>
+    </div>
+  </section>
+
+  <!-- Map & Top Provinces -->
+  <section class="map-section">
+    <div class="chart-card">
+      <h3>Rooftop Solar by Province</h3>
+      <p class="chart-subtitle">Installed capacity distribution across Vietnam</p>
+      <div class="chart-controls">
+        <button class="active" data-metric="capacity" onclick="switchMapMetric('capacity', this)">Capacity</button>
+        <button data-metric="systems" onclick="switchMapMetric('systems', this)">Systems</button>
+        <button data-metric="generation" onclick="switchMapMetric('generation', this)">Generation</button>
+        <button data-metric="solar_ghi" onclick="switchMapMetric('solar_ghi', this)">☀️ Solar GHI</button>
+        <button data-metric="population" onclick="switchMapMetric('population', this)">👥 Population</button>
+      </div>
+      <div id="map"></div>
+      <div class="map-legend" id="mapLegend">
+        <span>Low</span>
+        <div class="legend-bar" id="legendBar">
+          <span style="background:#feedde"></span>
+          <span style="background:#fdbe85"></span>
+          <span style="background:#fd8d3c"></span>
+          <span style="background:#e6550d"></span>
+          <span style="background:#a63603"></span>
+        </div>
+        <span>High</span>
+      </div>
+      <div class="layer-info" id="layerInfo" style="display:none"></div>
+    </div>
+    <div class="chart-card">
+      <h3>Top 10 Provinces</h3>
+      <p class="chart-subtitle">By total installed capacity (MWp)</p>
+      <canvas id="chartTopProvinces"></canvas>
+    </div>
+  </section>
+
+  <!-- Region breakdown -->
+  <section class="chart-grid">
+    <div class="chart-card full-width">
+      <h3>Capacity by Region</h3>
+      <p class="chart-subtitle">Monthly capacity growth across 5 EVN power corporations</p>
+      <canvas id="chartRegions"></canvas>
+    </div>
+  </section>
+</main>
+
+  <!-- Solar GHI & Population Analysis -->
+  <section class="chart-grid">
+    <div class="chart-card">
+      <h3>☀️ GHI vs Công suất lắp đặt</h3>
+      <p class="chart-subtitle">Bức xạ mặt trời tương quan với lắp đặt solar — tháng hiện tại</p>
+      <canvas id="chartGhiVsCapacity"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>👥 Mật độ dân số vs Công suất</h3>
+      <p class="chart-subtitle">Mật độ dân số tương quan với lắp đặt solar — tháng hiện tại</p>
+      <canvas id="chartPopVsCapacity"></canvas>
+    </div>
+  </section>
+
+<footer>
+  <p>Data source: EVN RTS Monitoring Reports (Dec 2019 — Dec 2020) | Solar GHI: NASA POWER | Population: GSO Vietnam 2020</p>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
