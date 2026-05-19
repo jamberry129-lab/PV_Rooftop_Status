@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vietnam Rooftop Solar PV — WebGIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#232636;--surface3:#2a2e40;
+  --border:rgba(255,255,255,0.08);--accent:#f59e0b;--accent2:#3b82f6;
+  --green:#22c55e;--red:#ef4444;--purple:#a78bfa;
+  --text:#f1f5f9;--muted:#94a3b8;--radius:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text)}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ── NAV TABS ── */
+#nav{
+  height:48px;background:var(--surface);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:4px;position:sticky;top:0;z-index:1000;
+}
+#nav .brand{font-size:14px;font-weight:700;margin-right:16px;white-space:nowrap}
+#nav .brand span{color:var(--accent)}
+.tab-btn{
+  padding:6px 18px;border:none;background:transparent;color:var(--muted);
+  font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;border-radius:6px;
+  transition:.15s;white-space:nowrap;
+}
+.tab-btn:hover{background:var(--surface2);color:var(--text)}
+.tab-btn.active{background:rgba(245,158,11,.15);color:var(--accent);font-weight:600}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px}
+.badge{font-size:11px;background:rgba(245,158,11,.1);color:var(--accent);
+  padding:3px 10px;border-radius:20px;border:1px solid rgba(245,158,11,.2)}
+#monthSelect{
+  background:var(--surface2);border:1px solid var(--border);color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:12px;padding:5px 10px;
+  border-radius:6px;cursor:pointer;outline:none;
+}
+#monthSelect option{background:#1a1d27}
+
+/* ── PAGES ── */
+.page{display:none}
+.page.active{display:block}
+
+/* ══════════════════════════════════════════════
+   PAGE 1 — MAP
+══════════════════════════════════════════════ */
+#page-map{height:calc(100vh - 48px);display:grid;grid-template-columns:260px 1fr 300px}
+
+#left-panel{
+  background:var(--surface);border-right:1px solid var(--border);
+  overflow-y:auto;display:flex;flex-direction:column;
+}
+.psec{padding:14px 16px;border-bottom:1px solid var(--border)}
+.ptitle{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--muted);
+  text-transform:uppercase;margin-bottom:10px}
+
+.layer-btn{
+  display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:7px;
+  cursor:pointer;transition:.15s;font-size:12px;color:var(--muted);margin-bottom:3px;
+}
+.layer-btn:hover{background:var(--surface2);color:var(--text)}
+.layer-btn.active{background:rgba(245,158,11,.12);color:var(--accent);font-weight:600}
+.ldot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.kpi{background:var(--surface2);border-radius:8px;padding:10px 12px;border:1px solid var(--border)}
+.kpi-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:4px}
+.kpi-val{font-size:17px;font-weight:700;font-family:'DM Mono',monospace}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:1px}
+
+.leg-item{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);margin-bottom:5px}
+.leg-sw{width:14px;height:10px;border-radius:2px;flex-shrink:0}
+
+#map-wrap{position:relative;overflow:hidden}
+#map{width:100%;height:100%;background:#0d1117}
+.leaflet-container{background:#0d1117}
+.leaflet-control-zoom{display:none}
+
+#right-panel{
+  background:var(--surface);border-left:1px solid var(--border);
+  overflow-y:auto;display:flex;flex-direction:column;
+}
+#info-box{padding:16px;border-bottom:1px solid var(--border);min-height:180px}
+.i-placeholder{color:var(--muted);font-size:13px;font-style:italic;padding:20px 0;text-align:center}
+.i-name{font-size:17px;font-weight:700;margin-bottom:2px}
+.i-code{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-bottom:10px}
+.i-row{display:flex;justify-content:space-between;padding:5px 0;
+  border-bottom:1px solid var(--border);font-size:12px}
+.i-row:last-child{border:none}
+.i-rl{color:var(--muted)}
+.i-rv{font-weight:600;font-family:'DM Mono',monospace;font-size:11px}
+.i-sec{font-size:10px;font-weight:700;letter-spacing:1px;color:var(--muted);
+  text-transform:uppercase;margin:10px 0 5px}
+.cb-wrap{margin-bottom:7px}
+.cb-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px}
+.cb-track{height:4px;background:var(--surface3);border-radius:3px;overflow:hidden}
+.cb-fill{height:100%;border-radius:3px;transition:width .5s}
+
+#chart-sec{padding:14px 16px;border-bottom:1px solid var(--border)}
+#chart-sec .ptitle span{color:var(--accent)}
+#ts-canvas{width:100%;height:140px}
+
+#top5-sec{padding:14px 16px;flex:1}
+.t5-row{display:flex;align-items:center;gap:8px;padding:5px 0;
+  border-bottom:1px solid var(--border);font-size:12px}
+.t5-row:last-child{border:none}
+.t5-rank{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.t5-name{flex:1;font-size:12px}
+.t5-val{font-family:'DM Mono',monospace;color:var(--accent);font-size:11px;white-space:nowrap}
+
+/* ══════════════════════════════════════════════
+   PAGE 2 — ANALYTICS
+══════════════════════════════════════════════ */
+#page-analytics{padding:24px;overflow-y:auto;min-height:calc(100vh - 48px)}
+.analytics-title{
+  font-size:20px;font-weight:700;margin-bottom:4px;
+}
+.analytics-sub{font-size:13px;color:var(--muted);margin-bottom:24px}
+
+/* KPI row */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:24px}
+.kpi-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:16px 18px;
+}
+.kpi-card .lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
+.kpi-card .val{font-size:24px;font-weight:700;font-family:'DM Mono',monospace}
+.kpi-card .sub{font-size:11px;color:var(--muted);margin-top:3px}
+.kpi-card.gold .val{color:var(--accent)}
+.kpi-card.blue .val{color:var(--accent2)}
+.kpi-card.green .val{color:var(--green)}
+.kpi-card.purple .val{color:var(--purple)}
+
+/* Chart grid */
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.chart-grid.three{grid-template-columns:1fr 1fr 1fr}
+.chart-grid.full{grid-template-columns:1fr}
+.chart-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:18px 20px;
+}
+.chart-card h3{font-size:13px;font-weight:600;margin-bottom:2px}
+.chart-card p{font-size:11px;color:var(--muted);margin-bottom:14px}
+.chart-card canvas{width:100%!important}
+
+/* Loading */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;
+  justify-content:center;z-index:9999;flex-direction:column;gap:12px}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loading p{font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="loading"><div class="spinner"></div><p>Đang tải dữ liệu...</p></div>
+
+<!-- NAV -->
+<div id="nav">
+  <div class="brand">☀️ Vietnam Rooftop Solar <span>PV</span></div>
+  <button class="tab-btn active" onclick="showPage('map',this)">🗺️ Map</button>
+  <button class="tab-btn" onclick="showPage('analytics',this)">📊 Analytics</button>
+  <div class="nav-right">
+    <span class="badge">EVN RTS · Dec 2019–Dec 2020</span>
+    <label style="font-size:12px;color:var(--muted)">Month:</label>
+    <select id="monthSelect"></select>
+  </div>
+</div>
+
+<!-- PAGE MAP -->
+<div id="page-map" class="page active">
+  <div id="left-panel">
+    <div class="psec">
+      <div class="ptitle">Map Layer</div>
+      <div id="layer-list"></div>
+    </div>
+    <div class="psec">
+      <div class="ptitle">National KPIs</div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-lbl">Systems</div><div class="kpi-val" id="k-sys" style="color:var(--accent)">—</div></div>
+        <div class="kpi"><div class="kpi-lbl">Capacity</div><div class="kpi-val" id="k-cap" style="color:var(--accent2)">—</div><div class="kpi-sub">GWp</div></div>
+        <div class="kpi"><div class="kpi-lbl">Residential</div><div class="kpi-val" id="k-hh">—</div><div class="kpi-sub">units</div></div>
+        <div class="kpi"><div class="kpi-lbl">Avg GHI</div><div class="kpi-val" id="k-ghi">—</div><div class="kpi-sub">kWh/m²/yr</div></div>
+      </div>
+    </div>
+    <div class="psec" style="flex:1">
+      <div class="ptitle">Legend</div>
+      <div id="legend-list"></div>
+    </div>
+  </div>
+
+  <div id="map-wrap"><div id="map"></div></div>
+
+  <div id="right-panel">
+    <div id="info-box">
+      <div class="i-placeholder">👆 Click vào tỉnh để xem chi tiết</div>
+    </div>
+    <div class="psec" id="chart-sec">
+      <div class="ptitle">Monthly Trend — <span id="ts-prov">chọn tỉnh</span></div>
+      <canvas id="ts-canvas"></canvas>
+    </div>
+    <div id="top5-sec">
+      <div class="ptitle">Top 5 Provinces</div>
+      <div id="top5-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE ANALYTICS -->
+<div id="page-analytics" class="page">
+  <div class="analytics-title">📊 Province Analysis Dashboard</div>
+  <div class="analytics-sub">Vietnam Rooftop Solar PV · EVN RTS Monitoring 2019–2020 · 63 Provinces</div>
+
+  <div class="kpi-row">
+    <div class="kpi-card gold"><div class="lbl">Total Capacity</div><div class="val" id="a-cap">—</div><div class="sub">MWp installed</div></div>
+    <div class="kpi-card blue"><div class="lbl">Total Systems</div><div class="val" id="a-sys">—</div><div class="sub">RTS installations</div></div>
+    <div class="kpi-card green"><div class="lbl">Avg % HH with PV</div><div class="val" id="a-pct">—</div><div class="sub">household penetration</div></div>
+    <div class="kpi-card purple"><div class="lbl">Avg W/Person</div><div class="val" id="a-wpp">—</div><div class="sub">national average</div></div>
+    <div class="kpi-card"><div class="lbl">Avg GHI</div><div class="val" id="a-ghi" style="color:var(--accent)">—</div><div class="sub">kWh/m²/year</div></div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3>⚡ Total Installed Capacity (MWp) — Top 20</h3>
+      <p>Cumulative capacity by province, Dec 2020</p>
+      <canvas id="c-cap" height="300"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>📊 % Households with PV — Top 20</h3>
+      <p>Proportion of households with rooftop solar installed</p>
+      <canvas id="c-pct" height="300"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3>🏠🏢🏭 Capacity by Sector (MWp) — Top 20</h3>
+      <p>Stacked breakdown: Residential · Commercial · Industrial · Admin</p>
+      <canvas id="c-sec" height="300"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>☀️ GHI Solar Resource vs Installed Capacity</h3>
+      <p>Does higher solar irradiance = more installations?</p>
+      <canvas id="c-sca" height="300"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <h3>👤 W per Person — Top 20</h3>
+      <p>PV density normalized by population</p>
+      <canvas id="c-wpp" height="300"></canvas>
+    </div>
+    <div class="chart-card">
+      <h3>📈 Monthly Capacity Trend — Top 5 Provinces</h3>
+      <p>Cumulative capacity growth Dec 2019 → Dec 2020</p>
+      <canvas id="c-ts" height="300"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+// ── GLOBALS ───────────────────────────────────────────────────
+let D, leafMap, geoLayer, tsChart;
+let currentMonth = 'Dec-2020';
+let currentLayerIdx = 0;
+let selectedProv = null;
+
+const LAYERS = [
+  {key:'cap_tot',    label:'PV Capacity (monthly)',  unit:'MWp',
+   scale:[0,5,30,100,300,700,1500], colors:['#1e1b2e','#3b1f6e','#7c2d12','#b45309','#d97706','#f59e0b','#fde68a']},
+  {key:'qty_tot',    label:'Nr. Installations',      unit:'',
+   scale:[0,100,500,2000,5000,12000,25000], colors:['#0f172a','#1e3a5f','#1d4ed8','#2563eb','#3b82f6','#60a5fa','#bfdbfe']},
+  {key:'pv_pct_hh',  label:'% Households w/ PV',    unit:'%',
+   scale:[0,0.1,0.5,1,2,4,7], colors:['#052e16','#14532d','#15803d','#16a34a','#22c55e','#4ade80','#bbf7d0']},
+  {key:'w_per_person',label:'W per Person',          unit:'W',
+   scale:[0,10,50,150,400,700,1200], colors:['#2e1065','#4c1d95','#6d28d9','#7c3aed','#8b5cf6','#a78bfa','#ddd6fe']},
+  {key:'ghi_mean',   label:'GHI Solar Resource',     unit:'kWh/m²/yr',
+   scale:[0,1200,1400,1600,1800,2000,2200], colors:['#1c1917','#3f2d00','#713f12','#a16207','#ca8a04','#eab308','#fef08a']},
+  {key:'kw_per_house',label:'kW per Household',     unit:'kW',
+   scale:[0,0.05,0.2,0.5,1,2,5], colors:['#450a0a','#991b1b','#b91c1c','#ef4444','#f87171','#fca5a5','#fee2e2']},
+];
+
+const fmt  = v => v != null ? Math.round(v).toLocaleString('en-US') : '—';
+const fmtD = (v,d=1) => v != null ? parseFloat(v).toFixed(d) : '—';
+const fmtK = v => v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v).toString();
+
+// ── PAGE SWITCH ───────────────────────────────────────────────
+function showPage(id, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'analytics') renderAnalytics();
+  else setTimeout(() => leafMap && leafMap.invalidateSize(), 50);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+async function init() {
+  const res = await fetch('data.json');
+  D = await res.json();
+
+  // Month select
+  const sel = document.getElementById('monthSelect');
+  D.months.forEach(m => {
+    const o = document.createElement('option');
+    o.value = o.textContent = m;
+    if (m === 'Dec-2020') o.selected = true;
+    sel.appendChild(o);
+  });
+  sel.addEventListener('change', e => { currentMonth = e.target.value; refreshMap(); });
+
+  buildLayerUI();
+  initMap();
+  refreshMap();
+  document.getElementById('loading').style.display = 'none';
+}
+
+// ── MAP ───────────────────────────────────────────────────────
+function initMap() {
+  leafMap = window.L.map('map', {scrollWheelZoom:true, zoomControl:false}).setView([16, 106.5], 5.5);
+  window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png',
+    {attribution:'© CARTO', maxZoom:12, opacity:0.55}).addTo(leafMap);
+  window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png',
+    {attribution:'', maxZoom:12, opacity:0.5, zIndex:650}).addTo(leafMap);
+  buildGeoLayer();
+}
+
+function getColor(val, L) {
+  if (!val || val === 0) return '#1a1d27';
+  for (let i = L.scale.length-1; i >= 0; i--)
+    if (val >= L.scale[i]) return L.colors[Math.min(i, L.colors.length-1)];
+  return L.colors[0];
+}
+
+function getLayerVal(props, idx) {
+  const lk = LAYERS[idx].key;
+  if ((lk === 'cap_tot' || lk === 'qty_tot') && D.timeseries[currentMonth]) {
+    const ts = D.timeseries[currentMonth][props.name];
+    if (ts) return lk === 'cap_tot' ? ts.cap_tot : ts.qty_tot;
+  }
+  return props[lk];
+}
+
+function buildGeoLayer() {
+  if (geoLayer) leafMap.removeLayer(geoLayer);
+  const LDef = LAYERS[currentLayerIdx];
+  geoLayer = window.L.geoJSON(D.geojson, {
+    style: f => ({
+      fillColor: getColor(getLayerVal(f.properties, currentLayerIdx), LDef),
+      color: 'rgba(255,255,255,0.12)', weight: 0.8, fillOpacity: 0.85
+    }),
+    onEachFeature: (f, layer) => {
+      layer.on({
+        mouseover: e => {
+          if (selectedProv?.feature !== f)
+            e.target.setStyle({color:'rgba(255,255,255,0.5)',weight:1.5,fillOpacity:0.95});
+        },
+        mouseout: e => {
+          if (selectedProv?.feature !== f) geoLayer.resetStyle(e.target);
+        },
+        click: e => clickProv(e.target, f)
+      });
+    }
+  }).addTo(leafMap);
+}
+
+function clickProv(layer, feature) {
+  if (selectedProv) geoLayer.resetStyle(selectedProv.layer);
+  selectedProv = {layer, feature};
+  layer.setStyle({color:'#f59e0b', weight:2.5, fillOpacity:0.95,
+    fillColor: getColor(getLayerVal(feature.properties, currentLayerIdx), LAYERS[currentLayerIdx])});
+  renderInfoBox(feature.properties);
+  renderTsChart(feature.properties.name);
+}
+
+function refreshMap() {
+  buildGeoLayer();
+  updateMapKPIs();
+  renderTop5();
+  if (selectedProv) clickProv(selectedProv.layer, selectedProv.feature);
+}
+
+function updateMapKPIs() {
+  const ts = D.timeseries[currentMonth]; if (!ts) return;
+  let sys=0, cap=0, hh=0;
+  Object.values(ts).forEach(p => { sys+=p.qty_tot||0; cap+=p.cap_tot||0; hh+=p.qty_hh||0; });
+  document.getElementById('k-sys').textContent = fmtK(sys);
+  document.getElementById('k-cap').textContent = fmtD(cap/1e6, 2);
+  document.getElementById('k-hh').textContent  = fmtK(hh);
+  const ghis = D.geojson.features.map(f=>f.properties.ghi_mean).filter(Boolean);
+  document.getElementById('k-ghi').textContent = fmtD(ghis.reduce((a,b)=>a+b,0)/ghis.length, 0);
+}
+
+// ── LAYER UI ─────────────────────────────────────────────────
+function buildLayerUI() {
+  const c = document.getElementById('layer-list');
+  LAYERS.forEach((L, i) => {
+    const d = document.createElement('div');
+    d.className = 'layer-btn' + (i===0?' active':'');
+    d.id = 'lb-'+i;
+    const mc = L.colors[Math.floor(L.colors.length/2)];
+    d.innerHTML = `<div class="ldot" style="background:${mc}"></div>${L.label}`;
+    d.onclick = () => setLayer(i);
+    c.appendChild(d);
+  });
+  buildLegend(0);
+}
+
+function setLayer(i) {
+  document.querySelectorAll('.layer-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('lb-'+i).classList.add('active');
+  currentLayerIdx = i;
+  buildLegend(i);
+  buildGeoLayer();
+  renderTop5();
+}
+
+function buildLegend(i) {
+  const L = LAYERS[i];
+  const c = document.getElementById('legend-list');
+  c.innerHTML = '';
+  L.scale.forEach((s, idx) => {
+    const next = L.scale[idx+1];
+    const d = document.createElement('div');
+    d.className = 'leg-item';
+    d.innerHTML = `<div class="leg-sw" style="background:${L.colors[idx]}"></div>
+      <span>${s}${next!==undefined?'–'+next:'+'} ${L.unit}</span>`;
+    c.appendChild(d);
+  });
+}
+
+// ── INFO BOX ─────────────────────────────────────────────────
+function renderInfoBox(p) {
+  const cap = p.cap_tot||0;
+  const pct = v => cap>0 ? Math.round((v/cap)*100) : 0;
+  const bars = [
+    {label:'🏠 Residential', val:p.cap_hh||0, color:'#22c55e'},
+    {label:'🏢 Commercial',  val:p.cap_com||0, color:'#3b82f6'},
+    {label:'🏭 Industrial',  val:p.cap_ind||0, color:'#f59e0b'},
+    {label:'🏛 Admin',       val:p.cap_adm||0, color:'#a78bfa'},
+  ];
+  const ir = (l,v) => `<div class="i-row"><span class="i-rl">${l}</span><span class="i-rv">${v}</span></div>`;
+  const ts = D.timeseries[currentMonth]?.[p.name];
+
+  document.getElementById('info-box').innerHTML = `
+    <div class="i-name">${p.name}</div>
+    <div class="i-code">${p.Code||p.code||''} · ${currentMonth}</div>
+    <div class="i-sec">📊 Installations</div>
+    ${ir('Total systems', fmt(ts?.qty_tot ?? p.qty_tot))}
+    ${ir('Residential', fmt(ts?.qty_hh ?? p.qty_hh))}
+    ${ir('% Households', fmtD(p.pv_pct_hh,2)+'%')}
+    <div class="i-sec">⚡ Capacity</div>
+    ${ir('Total', fmtD(ts?.cap_tot ?? cap, 1)+' MWp')}
+    <div style="margin-top:6px">
+      ${bars.map(b=>`<div class="cb-wrap">
+        <div class="cb-lbl"><span>${b.label}</span><span>${fmtD(b.val,1)} MWp</span></div>
+        <div class="cb-track"><div class="cb-fill" style="width:${pct(b.val)}%;background:${b.color}"></div></div>
+      </div>`).join('')}
+    </div>
+    <div class="i-sec">☀️ Solar Resource</div>
+    ${ir('GHI mean', fmtD(p.ghi_mean,0)+' kWh/m²/yr')}
+    ${ir('PVOUT mean', fmtD(p.pvout_mean,0)+' kWh/kWp/yr')}
+    ${ir('W / person', fmtD(p.w_per_person,1)+' W')}
+    <div class="i-sec">👥 Demographics</div>
+    ${ir('Population', fmt(p.dan_so))}
+    ${ir('Households', fmt(p.so_ho))}
+  `;
+}
+
+// ── TIMESERIES CHART ─────────────────────────────────────────
+function renderTsChart(name) {
+  document.getElementById('ts-prov').textContent = name;
+  const labels = D.months.map(m => m.replace('-2019',"'19").replace('-2020',"'20"));
+  const caps = D.months.map(m => D.timeseries[m]?.[name]?.cap_tot ?? null);
+  const qtys = D.months.map(m => D.timeseries[m]?.[name]?.qty_tot ?? null);
+  if (tsChart) tsChart.destroy();
+  tsChart = new Chart(document.getElementById('ts-canvas').getContext('2d'), {
+    data: {
+      labels,
+      datasets: [
+        {type:'line', data:caps, borderColor:'#f59e0b', backgroundColor:'rgba(245,158,11,.1)',
+         fill:true, tension:.4, borderWidth:2, pointRadius:2, yAxisID:'y'},
+        {type:'bar',  data:qtys, backgroundColor:'rgba(59,130,246,.4)', borderColor:'rgba(59,130,246,.7)',
+         borderWidth:1, borderRadius:2, yAxisID:'y1'}
+      ]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{
+        backgroundColor:'rgba(15,17,23,.95)',titleColor:'#f59e0b',bodyColor:'#94a3b8',
+        borderColor:'rgba(255,255,255,.1)',borderWidth:1,cornerRadius:6,padding:8,
+        callbacks:{label:c=>c.datasetIndex===0?fmtD(c.raw,1)+' MWp':fmt(c.raw)+' sys'}
+      }},
+      scales:{
+        x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#64748b',font:{size:9}}},
+        y:{position:'left',grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#f59e0b',font:{size:8}},title:{display:true,text:'MWp',color:'#f59e0b',font:{size:8}}},
+        y1:{position:'right',grid:{display:false},ticks:{color:'#60a5fa',font:{size:8}},title:{display:true,text:'Systems',color:'#60a5fa',font:{size:8}}}
+      }
+    }
+  });
+}
+
+// ── TOP 5 ─────────────────────────────────────────────────────
+function renderTop5() {
+  const ts = D.timeseries[currentMonth]; if (!ts) return;
+  const lk = LAYERS[currentLayerIdx].key;
+  const rows = D.geojson.features.map(f => {
+    const p = f.properties;
+    let v = (lk==='cap_tot'||lk==='qty_tot') && ts[p.name]
+      ? (lk==='cap_tot' ? ts[p.name].cap_tot : ts[p.name].qty_tot) : (p[lk]||0);
+    return {name:p.name, val:v};
+  }).sort((a,b)=>b.val-a.val).slice(0,5);
+  const max = rows[0]?.val||1;
+  const rc = ['#f59e0b','#94a3b8','#cd7c2c','#64748b','#475569'];
+  document.getElementById('top5-list').innerHTML = rows.map((r,i)=>`
+    <div class="t5-row">
+      <div class="t5-rank" style="background:${rc[i]}22;color:${rc[i]}">${i+1}</div>
+      <div style="flex:1">
+        <div class="t5-name">${r.name}</div>
+        <div style="height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:3px">
+          <div style="height:100%;width:${Math.round(r.val/max*100)}%;background:${rc[i]};border-radius:2px"></div>
+        </div>
+      </div>
+      <div class="t5-val">${lk==='cap_tot'?fmtD(r.val,0)+' MWp':lk==='qty_tot'?fmt(r.val):fmtD(r.val,2)}</div>
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+//  ANALYTICS PAGE
+// ══════════════════════════════════════════════
+let analyticsBuilt = false;
+const analyticCharts = {};
+
+function renderAnalytics() {
+  if (analyticsBuilt) return;
+  analyticsBuilt = true;
+
+  const cmp = [...D.compare].sort((a,b)=>b.Cap_Total_MWp-a.Cap_Total_MWp);
+  const top20cap = cmp.slice(0,20);
+  const top20pct = [...D.compare].sort((a,b)=>b.pv_pct_hh-a.pv_pct_hh).slice(0,20);
+  const top20wpp = [...D.compare].sort((a,b)=>b.w_per_person-a.w_per_person).slice(0,20);
+
+  // ── Summary KPIs
+  const totalCap = cmp.reduce((a,b)=>a+(b.Cap_Total_MWp||0),0);
+  const totalSys = cmp.reduce((a,b)=>a+(b.Qty_Total||0),0);
+  const avgPct   = cmp.reduce((a,b)=>a+(b.pv_pct_hh||0),0)/cmp.length;
+  const avgWpp   = cmp.reduce((a,b)=>a+(b.w_per_person||0),0)/cmp.length;
+  const avgGhi   = cmp.reduce((a,b)=>a+(b.GHI_mean||0),0)/cmp.length;
+  document.getElementById('a-cap').textContent = fmtD(totalCap,0)+' MWp';
+  document.getElementById('a-sys').textContent = fmt(totalSys);
+  document.getElementById('a-pct').textContent = fmtD(avgPct,2)+'%';
+  document.getElementById('a-wpp').textContent = fmtD(avgWpp,0)+' W';
+  document.getElementById('a-ghi').textContent = fmtD(avgGhi,0);
+
+  const DARK = {
+    responsive:true, maintainAspectRatio:false,
+    plugins:{legend:{display:false}, tooltip:{
+      backgroundColor:'rgba(15,17,23,.95)',titleColor:'#f1f5f9',bodyColor:'#94a3b8',
+      borderColor:'rgba(255,255,255,.1)',borderWidth:1,cornerRadius:6,padding:10
+    }},
+    scales:{
+      x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#64748b',font:{size:9}}},
+      y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#64748b',font:{size:9}}}
+    }
+  };
+
+  // 1. Total Capacity bar
+  new Chart(document.getElementById('c-cap').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: top20cap.map(d=>d.std_name),
+      datasets:[{
+        data: top20cap.map(d=>+d.Cap_Total_MWp.toFixed(1)),
+        backgroundColor: top20cap.map((_,i)=>`hsl(${38-i*1.5},90%,${60-i*1.2}%)`),
+        borderRadius:4, borderSkipped:false
+      }]
+    },
+    options:{...DARK, indexAxis:'y',
+      plugins:{...DARK.plugins, tooltip:{...DARK.plugins.tooltip,
+        callbacks:{label:c=>c.raw.toLocaleString()+' MWp'}}},
+      scales:{
+        x:{...DARK.scales.x, title:{display:true,text:'MWp',color:'#64748b',font:{size:10}}},
+        y:{...DARK.scales.y, ticks:{color:'#94a3b8',font:{size:9}}}
+      }
+    }
+  });
+
+  // 2. % HH penetration
+  new Chart(document.getElementById('c-pct').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: top20pct.map(d=>d.std_name),
+      datasets:[{
+        data: top20pct.map(d=>+d.pv_pct_hh.toFixed(2)),
+        backgroundColor: top20pct.map((_,i)=>`hsl(${25+i*3},85%,${62-i*1}%)`),
+        borderRadius:4, borderSkipped:false
+      }]
+    },
+    options:{...DARK, indexAxis:'y',
+      plugins:{...DARK.plugins, tooltip:{...DARK.plugins.tooltip,
+        callbacks:{label:c=>c.raw+'%'}}},
+      scales:{
+        x:{...DARK.scales.x, title:{display:true,text:'% Households',color:'#64748b',font:{size:10}}},
+        y:{...DARK.scales.y, ticks:{color:'#94a3b8',font:{size:9}}}
+      }
+    }
+  });
+
+  // 3. Stacked sector
+  new Chart(document.getElementById('c-sec').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: top20cap.map(d=>d.std_name),
+      datasets:[
+        {label:'🏠 Residential', data:top20cap.map(d=>+d.Cap_Household_MWp.toFixed(1)), backgroundColor:'#22c55e', borderRadius:0},
+        {label:'🏢 Commercial',  data:top20cap.map(d=>+d.Cap_Commercial_MWp.toFixed(1)),backgroundColor:'#3b82f6', borderRadius:0},
+        {label:'🏭 Industrial',  data:top20cap.map(d=>+d.Cap_Industrial_MWp.toFixed(1)), backgroundColor:'#f59e0b', borderRadius:0},
+        {label:'🏛 Admin',       data:top20cap.map(d=>+(d.Cap_Admin_MWp||0).toFixed(1)),  backgroundColor:'#a78bfa', borderRadius:0},
+      ]
+    },
+    options:{...DARK, indexAxis:'y', barThickness:10,
+      plugins:{...DARK.plugins,legend:{display:true,position:'bottom',labels:{color:'#94a3b8',font:{size:10},boxWidth:12}}},
+      scales:{
+        x:{...DARK.scales.x,stacked:true,title:{display:true,text:'MWp',color:'#64748b',font:{size:10}}},
+        y:{...DARK.scales.y,stacked:true,ticks:{color:'#94a3b8',font:{size:9}}}
+      }
+    }
+  });
+
+  // 4. GHI vs Capacity scatter
+  new Chart(document.getElementById('c-sca').getContext('2d'), {
+    type:'scatter',
+    data:{
+      datasets:[{
+        data: D.compare.map(d=>({x:+(d.GHI_mean/365).toFixed(2), y:+d.Cap_Total_MWp.toFixed(1), label:d.std_name})),
+        backgroundColor:'rgba(59,130,246,.6)',
+        pointRadius: D.compare.map(d=>Math.sqrt(d.Qty_Total/100)+3),
+        pointHoverRadius:8,
+        borderColor:'rgba(59,130,246,.9)',borderWidth:1
+      }]
+    },
+    options:{...DARK,
+      plugins:{...DARK.plugins, tooltip:{...DARK.plugins.tooltip,
+        callbacks:{
+          title:c=>c[0].raw.label,
+          label:c=>[`GHI: ${c.raw.x} kWh/m²/day`,`Capacity: ${c.raw.y} MWp`]
+        }
+      }},
+      scales:{
+        x:{...DARK.scales.x,title:{display:true,text:'GHI Mean (kWh/m²/day)',color:'#64748b',font:{size:10}}},
+        y:{...DARK.scales.y,title:{display:true,text:'Installed Capacity (MWp)',color:'#64748b',font:{size:10}}}
+      }
+    }
+  });
+
+  // 5. W per Person
+  new Chart(document.getElementById('c-wpp').getContext('2d'), {
+    type:'bar',
+    data:{
+      labels: top20wpp.map(d=>d.std_name),
+      datasets:[{
+        data: top20wpp.map(d=>+d.w_per_person.toFixed(1)),
+        backgroundColor: top20wpp.map((_,i)=>`hsl(${267-i*2},70%,${65-i*1}%)`),
+        borderRadius:4, borderSkipped:false
+      }]
+    },
+    options:{...DARK, indexAxis:'y',
+      plugins:{...DARK.plugins, tooltip:{...DARK.plugins.tooltip,
+        callbacks:{label:c=>c.raw+' W/person'}}},
+      scales:{
+        x:{...DARK.scales.x, title:{display:true,text:'Watt per Person',color:'#64748b',font:{size:10}}},
+        y:{...DARK.scales.y, ticks:{color:'#94a3b8',font:{size:9}}}
+      }
+    }
+  });
+
+  // 6. Monthly timeseries top 5
+  const top5names = cmp.slice(0,5).map(d=>d.std_name);
+  const tsColors = ['#f59e0b','#3b82f6','#22c55e','#ef4444','#a78bfa'];
+  new Chart(document.getElementById('c-ts').getContext('2d'), {
+    type:'line',
+    data:{
+      labels: D.months.map(m=>m.replace('-2019',"'19").replace('-2020',"'20")),
+      datasets: top5names.map((name,i)=>({
+        label: name,
+        data: D.months.map(m=>D.timeseries[m]?.[name]?.cap_tot ?? null),
+        borderColor: tsColors[i], backgroundColor: tsColors[i]+'20',
+        borderWidth:2, pointRadius:3, tension:.4, fill:false
+      }))
+    },
+    options:{...DARK,
+      plugins:{...DARK.plugins,legend:{display:true,position:'bottom',
+        labels:{color:'#94a3b8',font:{size:10},boxWidth:20,usePointStyle:true}}},
+      scales:{
+        x:{...DARK.scales.x},
+        y:{...DARK.scales.y,title:{display:true,text:'MWp',color:'#64748b',font:{size:10}}}
+      }
+    }
+  });
+}
+
+// ── BOOT ─────────────────────────────────────────────────────
+init().catch(e => {
+  document.getElementById('loading').innerHTML =
+    `<div style="color:#ef4444;font-size:14px">❌ ${e.message}</div>`;
+});
+</script>
+</body>
+</html>
