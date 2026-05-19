@@ -45,8 +45,10 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 #monthSelect option{background:#1a1d27}
 
 /* ── PAGES ── */
-.page{display:none}
+.page{display:none;width:100%}
 .page.active{display:block}
+#page-map.active{display:grid;height:calc(100vh - 48px)}
+#page-analytics.active{display:block;height:calc(100vh - 48px);overflow-y:auto}
 
 /* ══════════════════════════════════════════════
    PAGE 1 — MAP
@@ -119,7 +121,7 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 /* ══════════════════════════════════════════════
    PAGE 2 — ANALYTICS
 ══════════════════════════════════════════════ */
-#page-analytics{padding:24px;overflow-y:auto;min-height:calc(100vh - 48px)}
+#page-analytics{padding:24px}
 .analytics-title{
   font-size:20px;font-weight:700;margin-bottom:4px;
 }
@@ -302,7 +304,7 @@ function showPage(id, btn) {
   document.getElementById('page-'+id).classList.add('active');
   btn.classList.add('active');
   if (id === 'analytics') renderAnalytics();
-  else setTimeout(() => leafMap && leafMap.invalidateSize(), 50);
+  else setTimeout(() => leafMap && leafMap.invalidateSize(), 100);
 }
 
 // ── INIT ─────────────────────────────────────────────────────
