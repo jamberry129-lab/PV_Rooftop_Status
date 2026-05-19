@@ -45,19 +45,22 @@ html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);colo
 #monthSelect option{background:#1a1d27}
 
 #page-map{
-  position:absolute;top:48px;left:0;right:0;bottom:0;
-  display:grid;grid-template-columns:260px 1fr 300px;
-  visibility:hidden;pointer-events:none;
+  position:fixed;top:48px;left:0;right:0;bottom:0;
+  display:none;
+  grid-template-columns:260px 1fr 300px;
+  z-index:1;
 }
-#page-map.active{visibility:visible;pointer-events:auto}
+#page-map.active{display:grid}
 #page-analytics{
-  position:absolute;
+  position:fixed;
   top:48px; left:0; right:0; bottom:0;
   overflow-y:auto; overflow-x:hidden;
   padding:20px;
   background:#0f1117;
+  display:none;
+  z-index:2;
 }
-#page-analytics.active{visibility:visible;pointer-events:auto}
+#page-analytics.active{display:block}
 
 .analytics-title{font-size:24px;font-weight:700;margin-bottom:4px;color:#f8fafc}
 .analytics-sub{font-size:13px;color:#94a3b8;margin-bottom:22px}
@@ -342,15 +345,16 @@ const fmtK = v => v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v).toString()
 
 // ── PAGE SWITCH ───────────────────────────────────────────────
 function showPage(id, btn) {
-  // Hide all pages
   document.getElementById('page-map').classList.remove('active');
   document.getElementById('page-analytics').classList.remove('active');
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  // Show selected
   document.getElementById('page-'+id).classList.add('active');
   btn.classList.add('active');
-  if (id === 'analytics') renderAnalytics();
-  else setTimeout(() => leafMap && leafMap.invalidateSize(), 100);
+  if (id === 'analytics') {
+    renderAnalytics();
+  } else {
+    setTimeout(() => leafMap && leafMap.invalidateSize(), 150);
+  }
 }
 
 // ── INIT ─────────────────────────────────────────────────────
